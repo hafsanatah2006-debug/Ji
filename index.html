@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Caffeine Cove | Artisan Coffee & Cozy Vibes</title>
+    <!-- Google Fonts & Simple Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Frame Motion via Framer Motion ESM (CDN) but we'll use Tailwind + custom CSS + minimal GSAP? but we recreate with CSS + JS smoothness, and match-the-beans game. For advanced scroll reveals we'll implement Intersection Observer + spring-like CSS. 
+    We keep everything modern, fully responsive, animated with pure CSS/JS and lightweight -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #FDF8F0;
+            color: #2C2418;
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .logo-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* warm coffee theme */
+        .bg-coffee-light { background: #F7E9DD; }
+        .bg-coffee-dark { background: #5E3A2C; }
+        .text-coffee { color: #5E3A2C; }
+        .border-coffee { border-color: #D9C2A7; }
+
+        /* custom animations */
+        @keyframes floatSteam {
+            0% { transform: translateY(0) scale(0.8); opacity: 0.6; }
+            100% { transform: translateY(-35px) scale(1.2); opacity: 0; }
+        }
+        .steam {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background: rgba(255,245,225,0.8);
+            border-radius: 50%;
+            filter: blur(4px);
+            pointer-events: none;
+            animation: floatSteam 2s infinite ease-out;
+        }
+
+        .card-hover {
+            transition: transform 0.25s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-8px) rotate(1deg);
+            box-shadow: 0 25px 35px -12px rgba(0,0,0,0.2);
+        }
+
+        /* game card flip styles */
+        .game-card {
+            background: #FFF3E8;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            transform-style: preserve-3d;
+        }
+        .game-card.flipped {
+            background: #EADBC6;
+            transform: scale(0.98);
+        }
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #2C2418;
+            color: #FFE6CC;
+            padding: 12px 24px;
+            border-radius: 60px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.3s ease;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .modal-overlay {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+        }
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(35px);
+            transition: opacity 0.7s cubic-bezier(0.2, 0.9, 0.4, 1.1), transform 0.7s ease;
+        }
+        .reveal-on-scroll.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .parallax-bg {
+            background-attachment: fixed;
+            background-size: cover;
+        }
+        button, .cursor-pointer {
+            cursor: pointer;
+        }
+        .menu-filter-btn.active {
+            background: #5E3A2C;
+            color: white;
+            border-color: #5E3A2C;
+        }
+        .steam-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        footer a {
+            transition: color 0.2s;
+        }
+        @media (max-width: 768px) {
+            .parallax-bg { background-attachment: scroll; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Container -->
+    <div id="toast" class="toast-notification">✨ Added to cart</div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-[#EADBC6]">
+        <div class="max-w-7xl mx-auto px-5 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-[#5E3A2C] tracking-tight"><i class="fas fa-mug-hot mr-2"></i>Caffeine Cove</div>
+            <div class="hidden md:flex gap-8 text-[#3E2C21] font-medium">
+                <a href="#home" class="hover:text-[#AA7C5C] transition">Home</a>
+                <a href="#menu" class="hover:text-[#AA7C5C] transition">Menu</a>
+                <a href="#founder" class="hover:text-[#AA7C5C] transition">Founder's Story</a>
+                <a href="#game" class="hover:text-[#AA7C5C] transition">Match the Beans</a>
+                <a href="#testimonials" class="hover:text-[#AA7C5C] transition">Vibes</a>
+            </div>
+            <div class="md:hidden">
+                <i class="fas fa-bars text-2xl text-[#5E3A2C]" id="mobileMenuBtn"></i>
+            </div>
+        </div>
+        <!-- mobile dropdown simple -->
+        <div id="mobileMenu" class="hidden flex-col bg-white/95 backdrop-blur-md border-t border-[#EADBC6] px-6 pb-4 md:hidden">
+            <a href="#home" class="py-2 hover:text-[#AA7C5C]">Home</a>
+            <a href="#menu" class="py-2 hover:text-[#AA7C5C]">Menu</a>
+            <a href="#founder" class="py-2 hover:text-[#AA7C5C]">Founder's Story</a>
+            <a href="#game" class="py-2 hover:text-[#AA7C5C]">Match the Beans</a>
+            <a href="#testimonials" class="py-2 hover:text-[#AA7C5C]">Vibes</a>
+        </div>
+    </nav>
+
+    <!-- Hero section -->
+    <section id="home" class="pt-28 pb-16 px-5 md:px-10 bg-gradient-to-br from-[#FCF5EA] to-[#F2E5D6]">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+            <div class="flex-1 text-center md:text-left reveal-on-scroll">
+                <div class="steam-wrapper inline-block">
+                    <i class="fas fa-mug-hot text-7xl text-[#B97F54] mb-4"></i>
+                    <div class="steam" style="left: 40%;"></div>
+                    <div class="steam" style="left: 60%; animation-delay: 0.6s;"></div>
+                </div>
+                <h1 class="text-5xl md:text-6xl font-bold text-[#3E2C21] leading-tight">Artisan Coffee <br><span class="text-[#AA7C5C]">& Cozy Vibes</span></h1>
+                <p class="text-gray-700 text-lg mt-4 max-w-lg mx-auto md:mx-0">Where every sip tells a story. Handcrafted brews, soulful space, and warmth in every cup.</p>
+                <div class="mt-8 flex gap-4 justify-center md:justify-start">
+                    <a href="#menu" class="bg-[#5E3A2C] text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:bg-[#7E4E3A] transition transform hover:scale-105">Explore Menu</a>
+                    <a href="#founder" class="border-2 border-[#5E3A2C] text-[#5E3A2C] px-8 py-3 rounded-full font-semibold hover:bg-[#5E3A2C] hover:text-white transition">Our Journey</a>
+                </div>
+            </div>
+            <div class="flex-1 flex justify-center">
+                <img src="https://picsum.photos/id/225/500/500" alt="Coffee shop ambiance" class="rounded-3xl shadow-2xl object-cover w-full max-w-md h-auto border-8 border-white/60" style="aspect-ratio: 1/1;">
+            </div>
+        </div>
+    </section>
+
+    <!-- MENU SECTION with interactive filtering and stagger animation -->
+    <section id="menu" class="py-20 px-5 bg-white">
+        <div class="max-w-6xl mx-auto text-center">
+            <h2 class="text-4xl md:text-5xl font-bold text-[#3E2C21] mb-2">Our <span class="text-[#AA7C5C]">Signature Brews</span></h2>
+            <p class="text-gray-600 max-w-xl mx-auto mb-10">Hand-picked recipes, crafted with love</p>
+            <div class="flex justify-center gap-4 flex-wrap mb-12">
+                <button data-filter="all" class="menu-filter-btn px-6 py-2 rounded-full border border-[#D9C2A7] bg-transparent font-medium transition-all duration-200 active:bg-[#5E3A2C] active:text-white">All</button>
+                <button data-filter="coffee" class="menu-filter-btn px-6 py-2 rounded-full border border-[#D9C2A7] bg-transparent font-medium">Coffee</button>
+                <button data-filter="pastry" class="menu-filter-btn px-6 py-2 rounded-full border border-[#D9C2A7] bg-transparent font-medium">Pastries</button>
+                <button data-filter="special" class="menu-filter-btn px-6 py-2 rounded-full border border-[#D9C2A7] bg-transparent font-medium">Specials</button>
+            </div>
+            <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+        </div>
+    </section>
+
+    <!-- FOUNDER SECTION - Hafsa's story: struggle, job loss, rejections, financial hardship & success -->
+    <section id="founder" class="py-24 px-5 bg-[#F7E9DD] relative overflow-hidden">
+        <div class="max-w-5xl mx-auto relative z-10">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="reveal-on-scroll order-2 md:order-1">
+                    <div class="bg-white/70 backdrop-blur-sm p-8 rounded-3xl shadow-xl">
+                        <span class="text-[#AA7C5C] font-bold text-sm tracking-wider"><i class="fas fa-heart"></i> FOUNDER'S JOURNEY</span>
+                        <h2 class="text-4xl font-bold text-[#3E2C21] mt-2">Hafsa's <span class="border-b-4 border-[#AA7C5C]">Struggle & Triumph</span></h2>
+                        <p class="text-gray-700 mt-5 leading-relaxed">Hafsa faced endless job rejections, financial hardship, and the pain of losing her stable corporate role during uncertain times. With a dream buried beneath doubt, she started baking at 3 AM, borrowed a small espresso machine, and sold coffee at local pop-ups. Despite countless closed doors, her unwavering passion gave birth to <strong>Caffeine Cove</strong> — a sanctuary for dreamers. Today, she stands as a beacon of resilience, employing single mothers and artists. Her story reminds us: the strongest brews emerge from the darkest roasts. ☕✨</p>
+                        <div class="mt-6 flex gap-3 text-[#5E3A2C]">
+                            <i class="fas fa-quote-left text-3xl opacity-50"></i>
+                            <p class="italic font-medium">"Every rejection brewed a stronger version of me. Now we serve hope in a cup." – Hafsa</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="reveal-on-scroll order-1 md:order-2 flex justify-center">
+                    <img src="https://picsum.photos/id/20/500/600" alt="Hafsa portrait" class="rounded-2xl shadow-2xl w-full max-w-sm object-cover border-4 border-white" style="aspect-ratio: 3/4;">
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-[#F7E9DD] to-transparent"></div>
+    </section>
+
+    <!-- GAME SECTION: "Match the Beans" memory matching game -->
+    <section id="game" class="py-20 px-5 bg-[#FFF8F0]">
+        <div class="max-w-5xl mx-auto text-center">
+            <h2 class="text-4xl font-bold text-[#3E2C21]">☕ Match the Beans</h2>
+            <p class="text-gray-600 mb-2">Flip cards & match coffee pairs! Test your memory.</p>
+            <div class="flex justify-between items-center max-w-md mx-auto mt-4 gap-6">
+                <div class="bg-white rounded-full px-5 py-2 shadow"><i class="fas fa-exchange-alt text-[#AA7C5C]"></i> <span id="moveCount">0</span> Moves</div>
+                <button id="resetGameBtn" class="bg-[#5E3A2C] text-white px-5 py-2 rounded-full text-sm hover:bg-[#7E4E3A] transition"><i class="fas fa-sync-alt"></i> New Game</button>
+            </div>
+            <div id="gameBoard" class="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-8 justify-items-center"></div>
+            <div id="winMessage" class="mt-6 hidden text-2xl font-bold text-[#AA7C5C] bg-white rounded-2xl p-4 inline-block mx-auto shadow-lg"><i class="fas fa-trophy"></i> You Win! Perfect Brew 🎉</div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-20 px-5 bg-[#F2E5D6]">
+        <div class="max-w-6xl mx-auto text-center">
+            <h2 class="text-4xl font-bold text-[#3E2C21]">Community <span class="text-[#AA7C5C]">Love</span></h2>
+            <div class="grid md:grid-cols-3 gap-8 mt-12">
+                <div class="bg-white p-6 rounded-2xl shadow-md card-hover reveal-on-scroll">
+                    <i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i>
+                    <p class="mt-3 italic">"The flat white is heavenly and the atmosphere feels like a hug."</p>
+                    <h4 class="font-bold mt-4">— Lina M.</h4>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md card-hover reveal-on-scroll">
+                    <i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i>
+                    <p class="mt-3 italic">"Hafsa's story moved me. Best cold brew and vegan banana bread!"</p>
+                    <h4 class="font-bold mt-4">— Darius K.</h4>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md card-hover reveal-on-scroll">
+                    <i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i><i class="fas fa-star text-yellow-500"></i>
+                    <p class="mt-3 italic">"Cozy corner, amazing espresso. The memory game is fun too!"</p>
+                    <h4 class="font-bold mt-4">— Sofia R.</h4>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER with CREATED BY HAFSA -->
+    <footer class="bg-[#2C2418] text-[#EADBC6] py-8 px-5">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <i class="fas fa-mug-hot mr-1"></i> Caffeine Cove — Where warmth meets grind.
+            </div>
+            <div class="font-medium tracking-wide">CREATED BY HAFSA ✨</div>
+            <div class="text-sm">© 2025 | Resilience brewed daily.</div>
+        </div>
+    </footer>
+
+    <script>
+        // ---------- MENU DATA ----------
+        const menuItems = [
+            { id: 1, name: "Velvet Latte", category: "coffee", price: "$5.5", desc: "Smooth espresso with oat milk", icon: "fa-mug-hot", steam: true },
+            { id: 2, name: "Hazelnut Affogato", category: "coffee", price: "$7", desc: "Vanilla gelato + espresso shot", icon: "fa-ice-cream" },
+            { id: 3, name: "Caramel Croissant", category: "pastry", price: "$4.2", desc: "Flaky layers with caramel drizzle", icon: "fa-croissant" },
+            { id: 4, name: "Cinnamon Scroll", category: "pastry", price: "$4.5", desc: "Swirls of brown sugar bliss", icon: "fa-bread-slice" },
+            { id: 5, name: "Spanish Latte", category: "special", price: "$6.2", desc: "Condensed milk magic", icon: "fa-mug-saucer" },
+            { id: 6, name: "Honey Cardamom Brew", category: "special", price: "$6.8", desc: "Aromatic & spiced", icon: "fa-mortar-pestle" }
+        ];
+
+        function renderMenu(filter = "all") {
+            const grid = document.getElementById("menuGrid");
+            const filtered = filter === "all" ? menuItems : menuItems.filter(i => i.category === filter);
+            grid.innerHTML = "";
+            filtered.forEach((item, idx) => {
+                const card = document.createElement("div");
+                card.className = "bg-[#FEF9EF] rounded-2xl p-5 shadow-md card-hover transition-all duration-300 opacity-0 translate-y-5";
+                card.style.animation = `fadeInUp 0.3s ease forwards ${idx * 0.05}s`;
+                card.innerHTML = `
+                    <div class="steam-wrapper inline-block text-4xl text-[#AA7C5C] mb-3 relative">
+                        <i class="fas ${item.icon}"></i>
+                        ${item.steam ? `<div class="steam" style="left: 20%;"></div><div class="steam" style="left: 60%; animation-delay:0.4s"></div>` : ''}
+                    </div>
+                    <h3 class="text-2xl font-bold text-[#5E3A2C]">${item.name}</h3>
+                    <p class="text-gray-500 text-sm mt-1">${item.desc}</p>
+                    <div class="flex justify-between items-center mt-4">
+                        <span class="text-xl font-bold text-[#AA7C5C]">${item.price}</span>
+                        <button data-id="${item.id}" class="add-to-cart-btn bg-[#5E3A2C] text-white px-4 py-1 rounded-full text-sm hover:bg-[#8B5A3E] transition"><i class="fas fa-cart-plus"></i> Add</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    showToast(`✨ ${menuItems.find(i => i.id == btn.dataset.id).name} added to cup!`);
+                });
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.textContent = msg || "✨ Added to cart";
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 2000);
+        }
+
+        // filter active state
+        document.querySelectorAll(".menu-filter-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll(".menu-filter-btn").forEach(b => b.classList.remove("active", "bg-[#5E3A2C]", "text-white"));
+                btn.classList.add("active", "bg-[#5E3A2C]", "text-white");
+                renderMenu(btn.dataset.filter);
+            });
+        });
+        renderMenu("all");
+        document.querySelector(".menu-filter-btn[data-filter='all']").classList.add("active", "bg-[#5E3A2C]", "text-white");
+
+        // ---------- MATCH THE BEANS MEMORY GAME (12 cards, 6 pairs) coffee-themed ----------
+        const coffeeIcons = ["fa-mug-hot", "fa-mug-saucer", "fa-coffee", "fa-cup-togo", "fa-blender", "fa-mortar-pestle"];
+        let gameCards = [];
+        let flippedCards = [];
+        let lockBoard = false;
+        let moves = 0;
+        let matchedPairs = 0;
+
+        function initGame() {
+            const iconsSet = [...coffeeIcons, ...coffeeIcons];
+            for (let i = iconsSet.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [iconsSet[i], iconsSet[j]] = [iconsSet[j], iconsSet[i]];
+            }
+            gameCards = iconsSet.map((icon, idx) => ({ id: idx, icon, matched: false, flipped: false }));
+            flippedCards = [];
+            lockBoard = false;
+            moves = 0;
+            matchedPairs = 0;
+            document.getElementById("moveCount").innerText = moves;
+            document.getElementById("winMessage").classList.add("hidden");
+            renderGameBoard();
+        }
+
+        function renderGameBoard() {
+            const board = document.getElementById("gameBoard");
+            board.innerHTML = "";
+            gameCards.forEach((card, index) => {
+                const cardDiv = document.createElement("div");
+                cardDiv.className = `game-card w-24 h-28 sm:w-28 sm:h-32 flex items-center justify-center text-3xl shadow-md transition-all duration-200 ${card.flipped || card.matched ? 'flipped bg-[#EADBC6]' : 'bg-[#FFF3E8]'}`;
+                cardDiv.style.transformStyle = "preserve-3d";
+                if (card.matched) {
+                    cardDiv.innerHTML = `<i class="fas ${card.icon} text-4xl text-[#5E3A2C]"></i><div class="absolute inset-0 bg-green-200/30 rounded-2xl"></div>`;
+                    cardDiv.classList.add("cursor-default", "opacity-80");
+                } else if (card.flipped) {
+                    cardDiv.innerHTML = `<i class="fas ${card.icon} text-4xl text-[#AA7C5C]"></i>`;
+                } else {
+                    cardDiv.innerHTML = `<i class="fas fa-seedling text-3xl text-[#B97F54]"></i>`;
+                }
+                cardDiv.addEventListener("click", () => onCardClick(index));
+                board.appendChild(cardDiv);
+            });
+        }
+
+        function onCardClick(idx) {
+            if (lockBoard) return;
+            const card = gameCards[idx];
+            if (card.matched || card.flipped) return;
+            card.flipped = true;
+            flippedCards.push(idx);
+            renderGameBoard();
+            if (flippedCards.length === 2) {
+                moves++;
+                document.getElementById("moveCount").innerText = moves;
+                lockBoard = true;
+                const cardA = gameCards[flippedCards[0]];
+                const cardB = gameCards[flippedCards[1]];
+                if (cardA.icon === cardB.icon) {
+                    // match
+                    cardA.matched = true;
+                    cardB.matched = true;
+                    cardA.flipped = false;
+                    cardB.flipped = false;
+                    matchedPairs++;
+                    flippedCards = [];
+                    lockBoard = false;
+                    renderGameBoard();
+                    if (matchedPairs === coffeeIcons.length) {
+                        document.getElementById("winMessage").classList.remove("hidden");
+                        showToast("🎉 Perfect match! You've mastered the beans! 🎉");
+                    }
+                } else {
+                    setTimeout(() => {
+                        gameCards[flippedCards[0]].flipped = false;
+                        gameCards[flippedCards[1]].flipped = false;
+                        flippedCards = [];
+                        lockBoard = false;
+                        renderGameBoard();
+                    }, 800);
+                }
+            }
+        }
+
+        document.getElementById("resetGameBtn").addEventListener("click", () => { initGame(); showToast("🔄 New game started! Good luck!"); });
+        initGame();
+
+        // mobile menu toggle
+        const mobileBtn = document.getElementById("mobileMenuBtn");
+        const mobileMenuDiv = document.getElementById("mobileMenu");
+        if(mobileBtn) {
+            mobileBtn.addEventListener("click", () => {
+                mobileMenuDiv.classList.toggle("hidden");
+            });
+        }
+
+        // Scroll reveal + parallax style intersection observer
+        const revealElements = document.querySelectorAll(".reveal-on-scroll");
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    entry.target.classList.add("revealed");
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15, rootMargin: "0px 0px -60px 0px" });
+        revealElements.forEach(el => observer.observe(el));
+        // set immediate reveal for some visible
+        setTimeout(() => {
+            revealElements.forEach(el => { if(el.getBoundingClientRect().top < window.innerHeight-100) el.classList.add("revealed"); });
+        }, 200);
+
+        // Steam micro-interactions: add steam to some hover elements? but fine
+        // Also hover tilt effect via CSS card-hover
+        // modal for cart? but toast already handles, plus modal was described: optional but we already have add-to-cart toast
+        // Add extra floating steam on menu items? already built steam animation in menu card if flagged.
+        // final adjustments: set active filter styling, smooth navigation.
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const targetId = this.getAttribute('href');
+                if(targetId === "#" || targetId === "") return;
+                const target = document.querySelector(targetId);
+                if(target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth' });
+                    if(mobileMenuDiv && !mobileMenuDiv.classList.contains("hidden")) mobileMenuDiv.classList.add("hidden");
+                }
+            });
+        });
+        // add bounce cursor effect for footer?
+        console.log("Caffeine Cove fully loaded — Hafsa's story + Match the Beans game active");
+    </script>
+    <style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .game-card {
+            transition: 0.2s linear;
+            backface-visibility: visible;
+        }
+        .game-card:hover:not(.cursor-default) {
+            transform: scale(1.02);
+            background: #F7E1C1;
+        }
+        .menu-filter-btn.active {
+            background-color: #5E3A2C;
+            color: white;
+            border-color: #5E3A2C;
+        }
+    </style>
+</body>
+</html>
